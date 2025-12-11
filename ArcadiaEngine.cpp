@@ -13,6 +13,8 @@
 #include <iostream>
 #include <map>
 #include <set>
+#include <cstdint>
+
 
 using namespace std;
 
@@ -22,13 +24,19 @@ using namespace std;
 
 // --- 1. PlayerTable (Double Hashing) ---
 
+// Define a fixed size for the hash table (must be a prime number)
+const int MAX_TABLE_SIZE = 10007;
+
+// ConcretePlayerTable: Implementation using Mid-Square Hashing and Double Hashing for collisions
 class ConcretePlayerTable : public PlayerTable {
 private:
+    // ======== Hash Table Structure (Fixed Size C-Style Arrays) ========
     int tableSize;
-    vector<int> keys;
-    vector<string> values;
+    int* keys;                           // C-style array for keys (playerID). -1 means empty slot.
+    string* values;                      // C-style array for values (player names).
 
-    // Returns the number of bits required to represent tableSize-1
+    // ======== Helper functions for Mid-Square Hashing ========
+    // Calculates 'r', the number of middle bits needed to represent tableSize-1
     int bitsNeeded() const {
         int bits = 0;
         int n = tableSize - 1;
@@ -40,52 +48,71 @@ private:
         return bits;
     }
 
-    // Computes the primary hash using the Mid-Square hashing method
+    // hash1: Mid-Square Hashing function
+    // Squares the key (64-bit to avoid overflow), extracts the middle 'r' bits.
     int hash1MidSquare(int key) const {
         uint64_t k = static_cast<uint64_t>(key);
         uint64_t sq = k * k;
         int r = bitsNeeded();
         const int totalBits = 64;
-        int shift = (totalBits - r) / 2;
-        uint64_t middle = (sq >> shift) & ((1ULL << r) - 1);
+        int shift = (totalBits - r) / 2; // Shift amount to extract the middle bits
+        uint64_t middle = (sq >> shift) & ((1ULL << r) - 1); // The middle bits
+        // Final hash index: middle % tableSize
         return static_cast<int>(middle % static_cast<uint64_t>(tableSize));
     }
 
-    // Computes the secondary hash used as the step size for double hashing
+    // hash2: Step size function for Double Hashing (must be non-zero)
+    // Ensures a step size h2(key) that is coprime to tableSize (if tableSize is prime)
     int hash2(int key) const {
-        int absKey = (key >= 0 ? key : -key);
-        return 1 + (absKey % (tableSize - 1));
+        // Formula: 1 + (key % (tableSize - 1))
+        return 1 + ( (key >= 0 ? key : -key) % (tableSize - 1) );
     }
 
 public:
-    // Initializes the hash table with empty slots
-    ConcretePlayerTable(int initialSize = 10007)
-        : tableSize(initialSize), keys(tableSize, -1), values(tableSize, "") {}
+    // Constructor: Initializes the fixed-size C-style arrays
+    ConcretePlayerTable(int initialSize = MAX_TABLE_SIZE)
+         : tableSize(initialSize)
+    {
+        keys = new int[tableSize];
+        values = new string[tableSize];
 
-    // Inserts or updates a player using mid-square primary hash and double hashing probing
+        for (int i = 0; i < tableSize; ++i) {
+            keys[i] = -1;
+        }
+    }
+
+
+    // insert: Inserts or updates using Mid-Square + Double Hashing
     void insert(int playerID, string name) override {
-        if (playerID < 0) return;
+        if (playerID < 0) return; // Simple protection
 
-        int h1 = hash1MidSquare(playerID);
-        int h2 = hash2(playerID);
+        int h1 = hash1MidSquare(playerID); // Initial bucket (Mid-Square)
+        int h2 = hash2(playerID);          // Step size (Double Hashing)
 
+        // Probing sequence: index = (h1 + i * h2) % tableSize
         for (int i = 0; i < tableSize; ++i) {
             int idx = (h1 + i * h2) % tableSize;
 
             if (keys[idx] == -1) {
+                // Empty slot found -> insert key and value
                 keys[idx] = playerID;
-                values[idx] = move(name);
+                values[idx] = move(name); // Use move for better performance with string
                 return;
             }
 
             if (keys[idx] == playerID) {
+                // Key found -> update the existing name
                 values[idx] = move(name);
                 return;
             }
+
+            // Otherwise: Collision, continue probing
         }
+
+        // If we reach here: The fixed-size table is completely full.
     }
 
-    // Searches for a player by probing with the same double hashing sequence
+    // search: Finds a player using the same probing sequence as insert
     string search(int playerID) override {
         if (playerID < 0) return "";
 
@@ -95,14 +122,22 @@ public:
         for (int i = 0; i < tableSize; ++i) {
             int idx = (h1 + i * h2) % tableSize;
 
-            if (keys[idx] == -1) return "";
-            if (keys[idx] == playerID) return values[idx];
+            if (keys[idx] == -1) {
+                // Empty slot found -> Key does not exist (stop searching)
+                return "";
+            }
+
+            if (keys[idx] == playerID) {
+                // Key found -> return the name
+                return values[idx];
+            }
+
+            // Otherwise: Continue probing
         }
 
-        return "";
+        return ""; // Visited all slots, key not found
     }
 };
-
 
 // --- 2. Leaderboard (Skip List) ---
 

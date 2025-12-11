@@ -24,25 +24,85 @@ using namespace std;
 
 class ConcretePlayerTable : public PlayerTable {
 private:
-    // TODO: Define your data structures here
-    // Hint: You'll need a hash table with double hashing collision resolution
+    int tableSize;
+    vector<int> keys;
+    vector<string> values;
+
+    // Returns the number of bits required to represent tableSize-1
+    int bitsNeeded() const {
+        int bits = 0;
+        int n = tableSize - 1;
+        while (n > 0) {
+            ++bits;
+            n >>= 1;
+        }
+        if (bits == 0) bits = 1;
+        return bits;
+    }
+
+    // Computes the primary hash using the Mid-Square hashing method
+    int hash1MidSquare(int key) const {
+        uint64_t k = static_cast<uint64_t>(key);
+        uint64_t sq = k * k;
+        int r = bitsNeeded();
+        const int totalBits = 64;
+        int shift = (totalBits - r) / 2;
+        uint64_t middle = (sq >> shift) & ((1ULL << r) - 1);
+        return static_cast<int>(middle % static_cast<uint64_t>(tableSize));
+    }
+
+    // Computes the secondary hash used as the step size for double hashing
+    int hash2(int key) const {
+        int absKey = (key >= 0 ? key : -key);
+        return 1 + (absKey % (tableSize - 1));
+    }
 
 public:
-    ConcretePlayerTable() {
-        // TODO: Initialize your hash table
-    }
+    // Initializes the hash table with empty slots
+    ConcretePlayerTable(int initialSize = 10007)
+        : tableSize(initialSize), keys(tableSize, -1), values(tableSize, "") {}
 
+    // Inserts or updates a player using mid-square primary hash and double hashing probing
     void insert(int playerID, string name) override {
-        // TODO: Implement double hashing insert
-        // Remember to handle collisions using h1(key) + i * h2(key)
+        if (playerID < 0) return;
+
+        int h1 = hash1MidSquare(playerID);
+        int h2 = hash2(playerID);
+
+        for (int i = 0; i < tableSize; ++i) {
+            int idx = (h1 + i * h2) % tableSize;
+
+            if (keys[idx] == -1) {
+                keys[idx] = playerID;
+                values[idx] = move(name);
+                return;
+            }
+
+            if (keys[idx] == playerID) {
+                values[idx] = move(name);
+                return;
+            }
+        }
     }
 
+    // Searches for a player by probing with the same double hashing sequence
     string search(int playerID) override {
-        // TODO: Implement double hashing search
-        // Return "" if player not found
+        if (playerID < 0) return "";
+
+        int h1 = hash1MidSquare(playerID);
+        int h2 = hash2(playerID);
+
+        for (int i = 0; i < tableSize; ++i) {
+            int idx = (h1 + i * h2) % tableSize;
+
+            if (keys[idx] == -1) return "";
+            if (keys[idx] == playerID) return values[idx];
+        }
+
         return "";
     }
 };
+
 
 // --- 2. Leaderboard (Skip List) ---
 

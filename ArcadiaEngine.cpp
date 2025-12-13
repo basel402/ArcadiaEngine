@@ -222,16 +222,49 @@ public:
 // =========================================================
 
 int InventorySystem::optimizeLootSplit(int n, vector<int>& coins) {
-    // TODO: Implement partition problem using DP
-    // Goal: Minimize |sum(subset1) - sum(subset2)|
-    // Hint: Use subset sum DP to find closest sum to total/2
+    long long totalSum = 0;
+    for (int coin : coins) {
+        totalSum += coin;
+    }
+
+    int target = totalSum / 2;
+
+    vector<bool> dp(target + 1, false);
+    dp[0] = true;
+
+    for (int coin : coins) {
+        for (int j = target; j >= coin; j--) {
+            if (dp[j - coin]) {
+                dp[j] = true;
+            }
+        }
+    }
+
+    int bestSum = 0;
+    for (int i = target; i >= 0; i--) {
+        if (dp[i]) {
+            bestSum = i;
+            break;
+        }
+    }
+
+    return (int)(totalSum - 2 * bestSum);
     return 0;
 }
 
 int InventorySystem::maximizeCarryValue(int capacity, vector<pair<int, int>>& items) {
-    // TODO: Implement 0/1 Knapsack using DP
-    // items = {weight, value} pairs
-    // Return maximum value achievable within capacity
+    vector<int> dp(capacity + 1, 0);
+
+    for (const auto& item : items) {
+        int weight = item.first;
+        int value = item.second;
+
+        for (int w = capacity; w >= weight; w--) {
+            dp[w] = max(dp[w], dp[w - weight] + value);
+        }
+    }
+
+    return dp[capacity];
     return 0;
 }
 

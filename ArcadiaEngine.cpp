@@ -208,9 +208,74 @@ public:
         root = NIL;
     }
     void insertItem(int itemID, int price) override {
-        // TODO: Implement Red-Black Tree insertion
-        // Remember to maintain RB-Tree properties with rotations and recoloring
+        Node* z = createNode(itemID, price);
+        Node* y = NIL;
+        Node* x = root;
+    
+        while (x != NIL) {
+            y = x;
+            if (z->itemID < x->itemID)
+                x = x->left;
+            else
+                x = x->right;
+        }
+    
+        z->parent = y;
+        if (y == NIL)
+            root = z;
+        else if (z->itemID < y->itemID)
+            y->left = z;
+        else
+            y->right = z;
+    
+        z->left = NIL;
+        z->right = NIL;
+        z->color = RED;
+    
+        while (z->parent->color == RED) {
+            if (z->parent == z->parent->parent->left) {
+                Node* u = z->parent->parent->right;
+                if (u->color == RED) {
+                    z->parent->color = BLACK;
+                    u->color = BLACK;
+                    z->parent->parent->color = RED;
+                    z = z->parent->parent;
+                } 
+                else {
+                    if (z == z->parent->right) {
+                        z = z->parent;
+                        leftRotate(z);
+                    }
+                    z->parent->color = BLACK;
+                    z->parent->parent->color = RED;
+                    rightRotate(z->parent->parent);
+                }
+            } 
+            else {
+                Node* u = z->parent->parent->left;
+                if (u->color == RED) {
+                    z->parent->color = BLACK;
+                    u->color = BLACK;
+                    z->parent->parent->color = RED;
+                    z = z->parent->parent;
+                } 
+                else {
+                    if (z == z->parent->left) {
+                        z = z->parent;
+                        rightRotate(z);
+                    }
+                    z->parent->color = BLACK;
+                    z->parent->parent->color = RED;
+                    leftRotate(z->parent->parent);
+                }
+            }
+            if (z == root)
+                break;
+        }
+    
+        root->color = BLACK;
     }
+
 
     void deleteItem(int itemID) override {
         // TODO: Implement Red-Black Tree deletion

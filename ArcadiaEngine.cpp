@@ -22,120 +22,87 @@ using namespace std;
 // PART A: DATA STRUCTURES (Concrete Implementations)
 // =========================================================
 
-// --- 1. PlayerTable (Double Hashing) ---
 
-// Define a fixed size for the hash table (must be a prime number)
-const int MAX_TABLE_SIZE = 10007;
-
-// ConcretePlayerTable: Implementation using Mid-Square Hashing and Double Hashing for collisions
 class ConcretePlayerTable : public PlayerTable {
 private:
-    // ======== Hash Table Structure (Fixed Size C-Style Arrays) ========
-    int tableSize;
-    int* keys;                           // C-style array for keys (playerID). -1 means empty slot.
-    string* values;                      // C-style array for values (player names).
+    #define TABLE_SIZE 101
+    vector<int> keys;        // -1 means empty
+    vector<string> values;
 
-    // ======== Helper functions for Mid-Square Hashing ========
-    // Calculates 'r', the number of middle bits needed to represent tableSize-1
     int bitsNeeded() const {
         int bits = 0;
-        int n = tableSize - 1;
+        int n = TABLE_SIZE - 1;
         while (n > 0) {
-            ++bits;
+            bits++;
             n >>= 1;
         }
-        if (bits == 0) bits = 1;
-        return bits;
+        return bits == 0 ? 1 : bits;
     }
 
-    // hash1: Mid-Square Hashing function
-    // Squares the key (64-bit to avoid overflow), extracts the middle 'r' bits.
+    // Mid-Square hash
     int hash1MidSquare(int key) const {
         uint64_t k = static_cast<uint64_t>(key);
         uint64_t sq = k * k;
         int r = bitsNeeded();
-        const int totalBits = 64;
-        int shift = (totalBits - r) / 2; // Shift amount to extract the middle bits
-        uint64_t middle = (sq >> shift) & ((1ULL << r) - 1); // The middle bits
-        // Final hash index: middle % tableSize
-        return static_cast<int>(middle % static_cast<uint64_t>(tableSize));
+        int shift = (64 - r) / 2;
+        uint64_t middle = (sq >> shift) & ((1ULL << r) - 1);
+        return static_cast<int>(middle % TABLE_SIZE);
     }
 
-    // hash2: Step size function for Double Hashing (must be non-zero)
-    // Ensures a step size h2(key) that is coprime to tableSize (if tableSize is prime)
+    // Second hash (step size)
     int hash2(int key) const {
-        // Formula: 1 + (key % (tableSize - 1))
-        return 1 + ( (key >= 0 ? key : -key) % (tableSize - 1) );
+        return 1 + ((key >= 0 ? key : -key) % (TABLE_SIZE - 1));
     }
 
 public:
-    // Constructor: Initializes the fixed-size C-style arrays
-    ConcretePlayerTable(int initialSize = MAX_TABLE_SIZE)
-         : tableSize(initialSize)
-    {
-        keys = new int[tableSize];
-        values = new string[tableSize];
+    ConcretePlayerTable()
+        : keys(TABLE_SIZE, -1), values(TABLE_SIZE)
+    {}
 
-        for (int i = 0; i < tableSize; ++i) {
-            keys[i] = -1;
-        }
-    }
-
-
-    // insert: Inserts or updates using Mid-Square + Double Hashing
     void insert(int playerID, string name) override {
-        if (playerID < 0) return; // Simple protection
+        if (playerID < 0) return;
 
-        int h1 = hash1MidSquare(playerID); // Initial bucket (Mid-Square)
-        int h2 = hash2(playerID);          // Step size (Double Hashing)
+        int h1 = hash1MidSquare(playerID);
+        int h2 = hash2(playerID);
 
-        // Probing sequence: index = (h1 + i * h2) % tableSize
-        for (int i = 0; i < tableSize; ++i) {
-            int idx = (h1 + i * h2) % tableSize;
+        for (int i = 0; i < TABLE_SIZE; i++) {
+            int idx = (h1 + i * h2) % TABLE_SIZE;
 
             if (keys[idx] == -1) {
-                // Empty slot found -> insert key and value
                 keys[idx] = playerID;
-                values[idx] = move(name); // Use move for better performance with string
+                values[idx] = name;
                 return;
             }
 
             if (keys[idx] == playerID) {
-                // Key found -> update the existing name
-                values[idx] = move(name);
+                values[idx] = name;
                 return;
             }
-
-            // Otherwise: Collision, continue probing
         }
 
-        // If we reach here: The fixed-size table is completely full.
+        // table completely full
+        cout << "Table is Full" << endl;
     }
 
-    // search: Finds a player using the same probing sequence as insert
     string search(int playerID) override {
         if (playerID < 0) return "";
 
         int h1 = hash1MidSquare(playerID);
         int h2 = hash2(playerID);
 
-        for (int i = 0; i < tableSize; ++i) {
-            int idx = (h1 + i * h2) % tableSize;
+        for (int i = 0; i < TABLE_SIZE; i++) {
+            int idx = (h1 + i * h2) % TABLE_SIZE;
 
             if (keys[idx] == -1) {
-                // Empty slot found -> Key does not exist (stop searching)
                 return "";
             }
 
             if (keys[idx] == playerID) {
-                // Key found -> return the name
                 return values[idx];
             }
-
-            // Otherwise: Continue probing
         }
 
-        return ""; // Visited all slots, key not found
+        return "";
     }
 };
 
@@ -167,17 +134,79 @@ public:
 };
 
 // --- 3. AuctionTree (Red-Black Tree) ---
-
 class ConcreteAuctionTree : public AuctionTree {
 private:
-    // TODO: Define your Red-Black Tree node structure
-    // Hint: Each node needs: id, price, color, left, right, parent pointers
+    enum Color { RED, BLACK };
+
+    struct Node {
+        int itemID;
+        int price;
+        Color color;
+        Node* left;
+        Node* right;
+        Node* parent;
+    };
+
+    Node* root;
+    Node* NIL;
+
+    Node* createNode(int itemID, int price) {
+        Node* n = new Node();
+        n->itemID = itemID;
+        n->price = price;
+        n->color = RED;
+        n->left = NIL;
+        n->right = NIL;
+        n->parent = NIL;
+        return n;
+    }
+
+    void leftRotate(Node* x) {
+        Node* y = x->right;
+        x->right = y->left;
+        if (y->left != NIL)
+            y->left->parent = x;
+
+        y->parent = x->parent;
+        if (x->parent == NIL)
+            root = y;
+        else if (x == x->parent->left)
+            x->parent->left = y;
+        else
+            x->parent->right = y;
+
+        y->left = x;
+        x->parent = y;
+    }
+
+    void rightRotate(Node* y) {
+        Node* x = y->left;
+        y->left = x->right;
+        if (x->right != NIL)
+            x->right->parent = y;
+
+        x->parent = y->parent;
+        if (y->parent == NIL)
+            root = x;
+        else if (y == y->parent->right)
+            y->parent->right = x;
+        else
+            y->parent->left = x;
+
+        x->right = y;
+        y->parent = x;
+    }
+
 
 public:
     ConcreteAuctionTree() {
-        // TODO: Initialize your Red-Black Tree
+        NIL = new Node();
+        NIL->color = BLACK;
+        NIL->left = NIL;
+        NIL->right = NIL;
+        NIL->parent = NIL;
+        root = NIL;
     }
-
     void insertItem(int itemID, int price) override {
         // TODO: Implement Red-Black Tree insertion
         // Remember to maintain RB-Tree properties with rotations and recoloring
@@ -188,7 +217,6 @@ public:
         // This is complex - handle all cases carefully
     }
 };
-
 // =========================================================
 // PART B: INVENTORY SYSTEM (Dynamic Programming)
 // =========================================================

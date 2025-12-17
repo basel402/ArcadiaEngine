@@ -565,42 +565,129 @@ long long InventorySystem::countStringPossibilities(string s) {
 
 // =========================================================
 // PART C: WORLD NAVIGATOR (Graphs)
-// =========================================================
-
+// 1) Safe Passage: Path Existence (UNDIRECTED graph)
 bool WorldNavigator::pathExists(int n, vector<vector<int>>& edges, int source, int dest) {
-    // TODO: Implement path existence check using BFS or DFS
-    // edges are bidirectional
+    if (source == dest) return true;
+
+    vector<vector<int>> adj(n);
+    for (auto &e : edges) {
+        adj[e[0]].push_back(e[1]);
+        adj[e[1]].push_back(e[0]);
+    }
+
+    vector<bool> visited(n, false);
+    queue<int> q;
+    q.push(source);
+    visited[source] = true;
+
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        for (int v : adj[u]) {
+            if (!visited[v]) {
+                if (v == dest) return true;
+                visited[v] = true;
+                q.push(v);
+            }
+        }
+    }
     return false;
 }
 
+// 2) The Bribe: Minimum Spanning Tree (Prim's Algorithm)
 long long WorldNavigator::minBribeCost(int n, int m, long long goldRate, long long silverRate,
-                                       vector<vector<int>>& roadData) {
-    // TODO: Implement Minimum Spanning Tree (Kruskal's or Prim's)
-    // roadData[i] = {u, v, goldCost, silverCost}
-    // Total cost = goldCost * goldRate + silverCost * silverRate
-    // Return -1 if graph cannot be fully connected
-    return -1;
+                                      vector<vector<int>>& roadData) {
+    vector<vector<pair<int,long long>>> adj(n);
+
+    for (auto &r : roadData) {
+        int u = r[0];
+        int v = r[1];
+        long long cost = r[2] * goldRate + r[3] * silverRate;
+        adj[u].push_back({v, cost});
+        adj[v].push_back({u, cost});
+    }
+
+    vector<bool> inMST(n, false);
+    priority_queue<pair<long long,int>, vector<pair<long long,int>>, greater<>> pq;
+
+    pq.push({0, 0});
+    long long totalCost = 0;
+    int visitedCount = 0;
+
+    while (!pq.empty() && visitedCount < n) {
+        auto [cost, u] = pq.top(); pq.pop();
+        if (inMST[u]) continue;
+
+        inMST[u] = true;
+        totalCost += cost;
+        visitedCount++;
+
+        for (auto &edge : adj[u]) {
+            if (!inMST[edge.first]) {
+                pq.push({edge.second, edge.first});
+            }
+        }
+    }
+
+    return (visitedCount == n) ? totalCost : -1;
 }
 
+// 3) Teleporter Network: All-Pairs Shortest Path (Floyd–Warshall)
 string WorldNavigator::sumMinDistancesBinary(int n, vector<vector<int>>& roads) {
-    // TODO: Implement All-Pairs Shortest Path (Floyd-Warshall)
-    // Sum all shortest distances between unique pairs (i < j)
-    // Return the sum as a binary string
-    // Hint: Handle large numbers carefully
-    return "0";
+    const long long INF = 1e18;
+    vector<vector<long long>> dist(n, vector<long long>(n, INF));
+
+    for (int i = 0; i < n; i++) dist[i][i] = 0;
+
+    for (auto &r : roads) {
+        int u = r[0];
+        int v = r[1];
+        long long w = r[2];
+        dist[u][v] = min(dist[u][v], w);
+        dist[v][u] = min(dist[v][u], w);
+    }
+
+    for (int k = 0; k < n; k++)
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < n; j++)
+                if (dist[i][k] < INF && dist[k][j] < INF)
+                    dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j]);
+
+    long long sum = 0;
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            if (dist[i][j] < INF)
+                sum += dist[i][j];
+        }
+    }
+
+    if (sum == 0) return "0";
+
+    string binary = "";
+    while (sum > 0) {
+        binary = char('0' + (sum % 2)) + binary;
+        sum /= 2;
+    }
+    return binary;
 }
 
-// =========================================================
-// PART D: SERVER KERNEL (Greedy)
-// =========================================================
+// ================= PART D: SERVER KERNEL =================
 
 int ServerKernel::minIntervals(vector<char>& tasks, int n) {
-    // TODO: Implement task scheduler with cooling time
-    // Same task must wait 'n' intervals before running again
-    // Return minimum total intervals needed (including idle time)
-    // Hint: Use greedy approach with frequency counting
-    return 0;
+    if (tasks.empty()) return 0;
+
+    vector<int> freq(26, 0);
+    for (char c : tasks)
+        freq[c - 'A']++;
+
+    int maxFreq = *max_element(freq.begin(), freq.end());
+    int countMax = 0;
+    for (int f : freq)
+        if (f == maxFreq) countMax++;
+
+    int intervals = (maxFreq - 1) * (n + 1) + countMax;
+    return max((int)tasks.size(), intervals);
 }
+
 
 // =========================================================
 // FACTORY FUNCTIONS (Required for Testing)

@@ -219,6 +219,7 @@ public:
     }
 };
 
+// --- 3. AuctionTree (Red-Black Tree) ---
 
 class ConcreteAuctionTree : public AuctionTree {
 private:

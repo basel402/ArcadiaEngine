@@ -284,6 +284,97 @@ private:
         y->parent = x;
     }
 
+    //---------------------------------Helper functions for deletion---------------------------------
+
+    Node* searchByID(Node* node, int id) {
+        if (node == NIL) return nullptr;
+        if (node->itemID == id) return node;
+
+        Node* leftResult = searchByID(node->left, id);
+        if (leftResult != nullptr) return leftResult;
+
+        return searchByID(node->right, id);
+    }
+
+    Node* minimum(Node* node) {
+        while (node->left != NIL) {
+            node = node->left;
+        }
+        return node;
+    }
+
+    void rbTransplant(Node* u, Node* v) {
+        if (u->parent == NIL) {
+            root = v;
+        }
+        else if (u == u->parent->left) {
+            u->parent->left = v;
+        }
+        else{
+            u->parent->right = v;
+        }
+        v->parent = u->parent;
+    }
+
+    //Fixes Double Black issue
+    void rbDeleteFixup(Node* x) {
+        while (x != root && x->color == BLACK) {
+            if (x == x->parent->left) {
+                Node* w = x->parent->right;
+                if (w->color == RED) {
+                    w->color = BLACK;
+                    x->parent->color = RED;
+                    leftRotate(x->parent);
+                    w = x->parent->right;
+                }
+                if (w->left->color == BLACK && w->right->color == BLACK) {
+                    w->color = RED;
+                    x = x->parent;
+                }
+                else
+                {
+                    if (w->right->color == BLACK) {
+                        w->left->color = BLACK;
+                        w->color = RED;
+                        rightRotate(w);
+                        w = x->parent->right;
+                    }
+                    w->color = x->parent->color;
+                    x->parent->color = BLACK;
+                    w->right->color = BLACK;
+                    leftRotate(x->parent);
+                    x = root;
+                }
+            }
+            else{
+                Node* w = x->parent->left;
+                if (w->color == RED) {
+                    w->color = BLACK;
+                    x->parent->color = RED;
+                    rightRotate(x->parent);
+                    w = x->parent->left;
+                }
+                if (w->right->color == BLACK && w->left->color == BLACK) {
+                    w->color = RED;
+                    x = x->parent;
+                }
+                else{
+                    if (w->left->color == BLACK) {
+                        w->right->color = BLACK;
+                        w->color = RED;
+                        leftRotate(w);
+                        w = x->parent->left;
+                    }
+                    w->color = x->parent->color;
+                    x->parent->color = BLACK;
+                    w->left->color = BLACK;
+                    rightRotate(x->parent)
+                    x = root;
+                }
+            }
+        }
+        x->color = BLACK;
+    }
 
 public:
     ConcreteAuctionTree() {
@@ -364,9 +455,50 @@ public:
     }
 
 
+
+
     void deleteItem(int itemID) override {
-        // TODO: Implement Red-Black Tree deletion
-        // This is complex - handle all cases carefully
+
+        Node* z = searchByID(root, itemID);
+
+        if (z == nullptr || z == NIL) return;
+
+        Node* y = z;
+        Node* x;
+        Color yOriginalColor = y->color;
+
+        if (z->left == NIL) {
+            x = z->right;
+            rbTransplant(z, z->right);
+        }
+        else if (z->right == NIL) {
+            x = z->left;
+            rbTransplant(z, z->left);
+        }
+        else{
+            y = minimum(z->right);
+            yOriginalColor = y->color;
+            x = y->right;
+
+            if (y->parent == z) {
+                x->parent = y;
+            }
+            else{
+                rbTransplant(y, y->right);
+                y->right = z->right;
+                y->right->parent = y;
+            }
+
+            rbTransplant(z, y);
+            y->left = z->left;
+            y->left->parent = y;
+            y->color = z->color;
+        }
+
+        if (yOriginalColor == BLACK) {
+            rbDeleteFixup(x);
+        }
+        delete z;
     }
 };
 // =========================================================
@@ -401,7 +533,6 @@ int InventorySystem::optimizeLootSplit(int n, vector<int>& coins) {
     }
 
     return (int)(totalSum - 2 * bestSum);
-    return 0;
 }
 
 int InventorySystem::maximizeCarryValue(int capacity, vector<pair<int, int>>& items) {

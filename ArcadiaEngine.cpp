@@ -220,7 +220,6 @@ public:
 };
 
 
-// --- 3. AuctionTree (Red-Black Tree) ---
 class ConcreteAuctionTree : public AuctionTree {
 private:
     enum Color { RED, BLACK };
@@ -237,6 +236,7 @@ private:
     Node* root;
     Node* NIL;
 
+    // ------------------ Node Creation ------------------
     Node* createNode(int itemID, int price) {
         Node* n = new Node();
         n->itemID = itemID;
@@ -248,6 +248,7 @@ private:
         return n;
     }
 
+    // ------------------ Rotations ------------------
     void leftRotate(Node* x) {
         Node* y = x->right;
         x->right = y->left;
@@ -284,8 +285,7 @@ private:
         y->parent = x;
     }
 
-    //---------------------------------Helper functions for deletion---------------------------------
-
+    // ------------------ Helpers for Deletion ------------------
     Node* searchByID(Node* node, int id) {
         if (node == NIL) return nullptr;
         if (node->itemID == id) return node;
@@ -297,78 +297,77 @@ private:
     }
 
     Node* minimum(Node* node) {
-        while (node->left != NIL) {
+        while (node->left != NIL)
             node = node->left;
-        }
         return node;
     }
 
     void rbTransplant(Node* u, Node* v) {
-        if (u->parent == NIL) {
+        if (u->parent == NIL)
             root = v;
-        }
-        else if (u == u->parent->left) {
+        else if (u == u->parent->left)
             u->parent->left = v;
-        }
-        else{
+        else
             u->parent->right = v;
-        }
+
         v->parent = u->parent;
     }
 
-    //Fixes Double Black issue
+    // ------------------ Delete Fixup ------------------
     void rbDeleteFixup(Node* x) {
         while (x != root && x->color == BLACK) {
             if (x == x->parent->left) {
                 Node* w = x->parent->right;
+
                 if (w->color == RED) {
                     w->color = BLACK;
                     x->parent->color = RED;
                     leftRotate(x->parent);
                     w = x->parent->right;
                 }
+
                 if (w->left->color == BLACK && w->right->color == BLACK) {
                     w->color = RED;
                     x = x->parent;
-                }
-                else
-                {
+                } else {
                     if (w->right->color == BLACK) {
                         w->left->color = BLACK;
                         w->color = RED;
                         rightRotate(w);
                         w = x->parent->right;
                     }
+
                     w->color = x->parent->color;
                     x->parent->color = BLACK;
                     w->right->color = BLACK;
                     leftRotate(x->parent);
                     x = root;
                 }
-            }
-            else{
+            } else {
                 Node* w = x->parent->left;
+
                 if (w->color == RED) {
                     w->color = BLACK;
                     x->parent->color = RED;
                     rightRotate(x->parent);
                     w = x->parent->left;
                 }
+
                 if (w->right->color == BLACK && w->left->color == BLACK) {
                     w->color = RED;
                     x = x->parent;
-                }
-                else{
+                } else {
                     if (w->left->color == BLACK) {
                         w->right->color = BLACK;
                         w->color = RED;
                         leftRotate(w);
                         w = x->parent->left;
                     }
+
                     w->color = x->parent->color;
                     x->parent->color = BLACK;
                     w->left->color = BLACK;
-                    rightRotate(x->parent)
+                    rightRotate(x->parent);
                     x = root;
                 }
             }
@@ -377,6 +376,7 @@ private:
     }
 
 public:
+    // ------------------ Constructor ------------------
     ConcreteAuctionTree() {
         NIL = new Node();
         NIL->color = BLACK;
@@ -385,31 +385,35 @@ public:
         NIL->parent = NIL;
         root = NIL;
     }
+
+    // ------------------ Insert (Price, ID) ------------------
     void insertItem(int itemID, int price) override {
         Node* z = createNode(itemID, price);
         Node* y = NIL;
         Node* x = root;
-    
+
         while (x != NIL) {
             y = x;
-            if (z->itemID < x->itemID)
+            if (z->price < x->price ||
+               (z->price == x->price && z->itemID < x->itemID))
                 x = x->left;
             else
                 x = x->right;
         }
-    
+
         z->parent = y;
         if (y == NIL)
             root = z;
-        else if (z->itemID < y->itemID)
+        else if (z->price < y->price ||
+                (z->price == y->price && z->itemID < y->itemID))
             y->left = z;
         else
             y->right = z;
-    
+
         z->left = NIL;
         z->right = NIL;
         z->color = RED;
-    
+
         while (z->parent->color == RED) {
             if (z->parent == z->parent->parent->left) {
                 Node* u = z->parent->parent->right;
@@ -418,8 +422,7 @@ public:
                     u->color = BLACK;
                     z->parent->parent->color = RED;
                     z = z->parent->parent;
-                } 
-                else {
+                } else {
                     if (z == z->parent->right) {
                         z = z->parent;
                         leftRotate(z);
@@ -428,16 +431,14 @@ public:
                     z->parent->parent->color = RED;
                     rightRotate(z->parent->parent);
                 }
-            } 
-            else {
+            } else {
                 Node* u = z->parent->parent->left;
                 if (u->color == RED) {
                     z->parent->color = BLACK;
                     u->color = BLACK;
                     z->parent->parent->color = RED;
                     z = z->parent->parent;
-                } 
-                else {
+                } else {
                     if (z == z->parent->left) {
                         z = z->parent;
                         rightRotate(z);
@@ -447,20 +448,13 @@ public:
                     leftRotate(z->parent->parent);
                 }
             }
-            if (z == root)
-                break;
         }
-    
         root->color = BLACK;
     }
 
-
-
-
+    // ------------------ Delete by Item ID ------------------
     void deleteItem(int itemID) override {
-
         Node* z = searchByID(root, itemID);
-
         if (z == nullptr || z == NIL) return;
 
         Node* y = z;
@@ -475,15 +469,14 @@ public:
             x = z->left;
             rbTransplant(z, z->left);
         }
-        else{
+        else {
             y = minimum(z->right);
             yOriginalColor = y->color;
             x = y->right;
 
             if (y->parent == z) {
                 x->parent = y;
-            }
-            else{
+            } else {
                 rbTransplant(y, y->right);
                 y->right = z->right;
                 y->right->parent = y;
@@ -495,12 +488,13 @@ public:
             y->color = z->color;
         }
 
-        if (yOriginalColor == BLACK) {
+        if (yOriginalColor == BLACK)
             rbDeleteFixup(x);
-        }
+
         delete z;
     }
 };
+
 // =========================================================
 // PART B: INVENTORY SYSTEM (Dynamic Programming)
 // =========================================================

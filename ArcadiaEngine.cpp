@@ -543,7 +543,6 @@ int InventorySystem::maximizeCarryValue(int capacity, vector<pair<int, int>>& it
     }
 
     return dp[capacity];
-    return 0;
 }
 
 long long InventorySystem::countStringPossibilities(string s) {
@@ -567,6 +566,9 @@ long long InventorySystem::countStringPossibilities(string s) {
 // PART C: WORLD NAVIGATOR (Graphs)
 // 1) Safe Passage: Path Existence (UNDIRECTED graph)
 bool WorldNavigator::pathExists(int n, vector<vector<int>>& edges, int source, int dest) {
+    if (n == 0) return false;
+    if (source < 0 || source >= n) return false;
+    if (dest < 0 || dest >= n) return false;
     if (source == dest) return true;
 
     vector<vector<int>> adj(n);

@@ -21,37 +21,20 @@ using namespace std;
 // =========================================================
 // PART A: DATA STRUCTURES (Concrete Implementations)
 // =========================================================
-
-
 class ConcretePlayerTable : public PlayerTable {
 private:
     #define TABLE_SIZE 101
-    vector<int> keys;        // -1 means empty
+    #define PRIME 97
+
+    vector<int> keys;
     vector<string> values;
 
-    int bitsNeeded() const {
-        int bits = 0;
-        int n = TABLE_SIZE - 1;
-        while (n > 0) {
-            bits++;
-            n >>= 1;
-        }
-        return bits == 0 ? 1 : bits;
+    int hash1(int key) const {
+        return key % TABLE_SIZE;
     }
 
-    // Mid-Square hash
-    int hash1MidSquare(int key) const {
-        uint64_t k = static_cast<uint64_t>(key);
-        uint64_t sq = k * k;
-        int r = bitsNeeded();
-        int shift = (64 - r) / 2;
-        uint64_t middle = (sq >> shift) & ((1ULL << r) - 1);
-        return static_cast<int>(middle % TABLE_SIZE);
-    }
-
-    // Second hash (step size)
     int hash2(int key) const {
-        return 1 + ((key >= 0 ? key : -key) % (TABLE_SIZE - 1));
+        return PRIME - (key % PRIME);
     }
 
 public:
@@ -62,7 +45,7 @@ public:
     void insert(int playerID, string name) override {
         if (playerID < 0) return;
 
-        int h1 = hash1MidSquare(playerID);
+        int h1 = hash1(playerID);
         int h2 = hash2(playerID);
 
         for (int i = 0; i < TABLE_SIZE; i++) {
@@ -80,26 +63,21 @@ public:
             }
         }
 
-        // table completely full
         cout << "Table is Full" << endl;
     }
 
     string search(int playerID) override {
         if (playerID < 0) return "";
 
-        int h1 = hash1MidSquare(playerID);
+        int h1 = hash1(playerID);
         int h2 = hash2(playerID);
 
         for (int i = 0; i < TABLE_SIZE; i++) {
             int idx = (h1 + i * h2) % TABLE_SIZE;
 
-            if (keys[idx] == -1) {
-                return "";
-            }
+            if (keys[idx] == -1) return "";
 
-            if (keys[idx] == playerID) {
-                return values[idx];
-            }
+            if (keys[idx] == playerID) return values[idx];
         }
 
         return "";
@@ -544,23 +522,32 @@ int InventorySystem::maximizeCarryValue(int capacity, vector<pair<int, int>>& it
 
     return dp[capacity];
 }
-
 long long InventorySystem::countStringPossibilities(string s) {
     const long long MOD = 1000000007;
-    int n = s.length();
 
+    if (s.empty()) return 1;
+
+    for (char c : s)
+        if (c == 'w' || c == 'm')
+            return 0;
+
+    int n = s.length();
     vector<long long> dp(n + 1, 0);
+
     dp[0] = 1;
     dp[1] = 1;
 
     for (int i = 2; i <= n; i++) {
         dp[i] = dp[i - 1];
-        if (s[i - 1] == 'u' && s[i - 2] == 'u') dp[i] = (dp[i] + dp[i - 2]) % MOD;
-        if (s[i - 1] == 'n' && s[i - 2] == 'n') dp[i] = (dp[i] + dp[i - 2]) % MOD;
+        if (s[i - 1] == 'u' && s[i - 2] == 'u')
+            dp[i] = (dp[i] + dp[i - 2]) % MOD;
+        if (s[i - 1] == 'n' && s[i - 2] == 'n')
+            dp[i] = (dp[i] + dp[i - 2]) % MOD;
     }
 
-    return dp[n]%MOD;
+    return dp[n] % MOD;
 }
+
 
 // =========================================================
 // PART C: WORLD NAVIGATOR (Graphs)
